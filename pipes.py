@@ -2,12 +2,19 @@
 
 import curses
 
+BOARD_WIDTH = 8
+BOARD_HEIGHT = 5
+TILE_SIZE = 3 # every tile is actually a 3x3 grid
+
 PIPE_STRAIGHT = (
     ((0, 1), (1, 1), (2, 1)),
     ((1, 0), (1, 1), (1, 2))
 )
 PIPE_TURN = (
-    ((1, 0), (1, 1), (2, 1))
+    ((1, 0), (1, 1), (2, 1)),
+    ((2, 1), (1, 1), (1, 2)),
+    ((0, 1), (1, 1), (1, 2)),
+    ((1, 0), (1, 1), (0, 1))
 )
 PIPES = (PIPE_STRAIGHT, PIPE_TURN)
 
@@ -40,7 +47,10 @@ def main(screen):
     screen.border()
     init_colors()
 
-    board = [[False for x in range(0, 12)] for y in range(0, 18)]
+    board = [
+        [False for x in range(0, BOARD_WIDTH * TILE_SIZE)]
+        for y in range(0, BOARD_HEIGHT * TILE_SIZE)
+        ]
     pipe = None
     x, y, r = 0, 0, 0
     while True:
@@ -50,18 +60,18 @@ def main(screen):
             log("selecting pipe %d" % (int(chr(ch)) - 1))
             pipe = PIPES[int(chr(ch)) - 1] # key "1" should select pipe #0
         elif ch == curses.KEY_UP:
-            y -= 3
+            y = max(0, y - TILE_SIZE)
         elif ch == curses.KEY_RIGHT:
-            x += 3
+            x = min((BOARD_WIDTH - 1) * TILE_SIZE , x + 3)
         elif ch == curses.KEY_DOWN:
-            y += 3
+            y = min((BOARD_HEIGHT - 1) * TILE_SIZE, y + 3)
         elif ch == curses.KEY_LEFT:
-            x -= 3
+            x = max(0, x - TILE_SIZE)
         elif ch == ord("r"):
             r = (r + 1) % len(pipe)
         elif ch == ord(" "):
             board = place_pipe(pipe, x, y, r, board)
-            pipe = None
+            #pipe = None
 
 def log(msg):
     open("log.txt", "a").write(msg + "\n")
