@@ -6,11 +6,12 @@ BOARD_HEIGHT = 0 # set by load_level()
 BOARD_WIDTH = 0 # set by load_level()
 TILE_SIZE = 3 # every tile is actually a 3x3 grid
 
-CELL_EMPTY = 0
-CELL_PIPE = 1
-CELL_PIPE_WATER = 2
-CELL_START = 3
-CELL_FINISH = 4
+CELL_EMPTY = 0          # identifies an empty cell
+CELL_PIPE = 1           # identifies a cell with a pipe
+CELL_PIPE_WATER = 2     # identifies a cell with a pipe with water
+CELL_PIPE_ACTIVE = 3    # identifies a cell with the currently selected pipe
+CELL_START = 4          # identifies a cell where the water flow starts
+CELL_FINISH = 5         # identifies a cell where the water flow should end
 
 PIPE_CLOSED = (
     ((1, 0), (1, 1)),
@@ -47,47 +48,31 @@ def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
     for x, y in pipe[pipe_r]:
         board[pipe_y + y][pipe_x + x] = CELL_PIPE
 
-def start_flow(board, start_x, start_y):
-    log("starting water flow on (%d, %d)" % (start_x, start_y))
-    board[start_y][start_x] = CELL_PIPE_WATER
-
-def flow_water(board):
-    for y in range(0, len(board)):
-        for x in range(0, len(board[y])):
-            if board[y][x] == CELL_PIPE_WATER:
-                if board[y-1][x] not in (CELL_EMPTY, CELL_PIPE_WATER):
-                    log("flowing from (%d, %d) to (%d, %d)" % (x, y, x, y-1))
-                    board[y-1][x] = CELL_PIPE_WATER
-                    return
-                if board[y][x+1] not in (CELL_EMPTY, CELL_PIPE_WATER):
-                    log("flowing from (%d, %d) to (%d, %d)" % (x, y, x+1, y))
-                    board[y][x+1] = CELL_PIPE_WATER
-                    return
-                if board[y+1][x] not in (CELL_EMPTY, CELL_PIPE_WATER):
-                    log("flowing from (%d, %d) to (%d, %d)" % (x, y, x, y+1))
-                    board[y+1][x] = CELL_PIPE_WATER
-                    return
-                if board[y][x-1] not in (CELL_EMPTY, CELL_PIPE_WATER):
-                    log("flowing from (%d, %d) to (%d, %d)" % (x, y, x-1, y))
-                    board[y][x-1] = CELL_PIPE_WATER
-                    return
+def flow_water(board, flow_endpoints):
+    new_flow_endpoints = []
+    for x, y in flow_endpoints:
+        moved_endpoint = False
+        # Flow water into any perpendicular adjacent pipes
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)): 
+            if board[y + dy][x + dx] not in (CELL_EMPTY, CELL_PIPE_WATER):
+                log("flowing from (%d, %d) to (%d, %d)" % (x, y, x + dx, y + dy))
+                board[y + dy][x + dx] = CELL_PIPE_WATER
+                new_flow_endpoints.append((x + dx, y + dy))
+                moved_endpoint = True
+        if not moved_endpoint: # Add original endpoint if it did not change
+            new_flow_endpoints.append((x, y))
+    return new_flow_endpoints
 
 def print_board(win, board, pipe, pipe_x, pipe_y, pipe_r):
     for y in range(0, len(board)):
         win.move(1 + y, 1) # avoid border
         for x in range(0, len(board[y])):
             if pipe and (x - pipe_x, y - pipe_y) in pipe[pipe_r]:
-                win.addstr("██")
-            elif board[y][x] == CELL_PIPE:
-                win.addstr("██")
-            elif board[y][x] == CELL_PIPE_WATER:
-                win.addstr("██", curses.color_pair(CELL_PIPE_WATER))
-            elif board[y][x] == CELL_START:
-                win.addstr("██", curses.color_pair(CELL_START))
-            elif board[y][x] == CELL_FINISH:
-                win.addstr("██", curses.color_pair(CELL_FINISH))
-            else:
+                win.addstr("  ", curses.color_pair(CELL_PIPE_ACTIVE))
+            elif board[y][x] == CELL_EMPTY:
                 win.addstr("░░")
+            else:
+                win.addstr("  ", curses.color_pair(board[y][x]))
     win.refresh()
 
 def load_board(level):
@@ -115,9 +100,11 @@ def load_board(level):
     return board, start_x, start_y, finish_x, finish_y
 
 def init_colors():
-    curses.init_pair(CELL_PIPE_WATER, curses.COLOR_BLUE, curses.COLOR_BLACK)
-    curses.init_pair(CELL_START, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    curses.init_pair(CELL_FINISH, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(CELL_PIPE, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    curses.init_pair(CELL_PIPE_WATER, curses.COLOR_BLACK, curses.COLOR_BLUE)
+    curses.init_pair(CELL_PIPE_ACTIVE, curses.COLOR_BLACK, curses.COLOR_MAGENTA)
+    curses.init_pair(CELL_START, curses.COLOR_BLACK, curses.COLOR_GREEN)
+    curses.init_pair(CELL_FINISH, curses.COLOR_BLACK, curses.COLOR_RED)
 
 def main(screen):
     curses.curs_set(False) # disable cursor
@@ -129,6 +116,7 @@ def main(screen):
     board_win.border()
 
     log("Start=(%d, %d), finish=(%d, %d)" % (start_x, start_y, finish_x, finish_y))
+    flow_endpoints = [(start_x, start_y)]
     pipe = None
     x, y, r = 0, 0, 0
     while True:
@@ -150,10 +138,8 @@ def main(screen):
             r = (r + 1) % len(pipe)
         elif ch == ord(" "):
             place_pipe(pipe, x, y, r, board)
-        elif ch == ord("F"):
-            start_flow(board, start_x, start_y)
         elif ch == ord("f"):
-            flow_water(board)
+            flow_endpoints = flow_water(board, flow_endpoints)
         elif ch == ord("q"):
             return
 
