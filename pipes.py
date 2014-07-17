@@ -12,7 +12,7 @@ CELL_PIPE_WATER = 2
 CELL_START = 3
 CELL_FINISH = 4
 
-PIPE_CLOSED = ( # dead end
+PIPE_CLOSED = (
     ((1, 0), (1, 1)),
     ((2, 1), (1, 1)),
     ((1, 2), (1, 1)),
