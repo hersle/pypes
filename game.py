@@ -4,54 +4,45 @@ import curses
 import pipes
 import menu
 import levelio
+import settings
 from time import time
 import log
 
 TILE_SIZE = 3
 
 def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
-    # Add the pipe to the board if this tile is free.
     if board[pipe_y + 1][pipe_x + 1] == pipes.CELL_EMPTY:
         for x, y in pipe[pipe_r]:
             board[pipe_y + y][pipe_x + x] = pipes.CELL_PIPE
 
 def flow_water(board, flow_endpoints):
-    # TODO: review
     new_flow_endpoints = []
     for x, y in flow_endpoints:
-        if board[y][x] == pipes.CELL_EMPTY:
-            log.log("game lost")
-        offx = -1 + x % 3
-        offy = -1 + y % 3
-        log.log("offx=%d, offy=%d" % (offx, offy))
-
-        # Fill cell
+        log.log("filling (%d, %d)" % (x, y))
         board[y][x] = pipes.CELL_PIPE_WATER
 
-        # Flow water into any adjacent pipes
-        moved_endpoint = False
-        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)): 
-            if (dx, dy) == (offx, offy):
-                log.log("(%d, %d) is in same direction" % (dx + x, dy + y))
-            #if board[y + dy][x + dx] not in (pipes.CELL_EMPTY, pipes.CELL_PIPE_WATER):
-            if board[y + dy][x + dx] != pipes.CELL_PIPE_WATER and (board[y+dy][x+dx] != pipes.CELL_EMPTY or (dx, dy) == (offx, offy)):
+        # Flow water into any adjacent cells matching some criteria
+        offx = -1 + x % TILE_SIZE  # cells to left/right of tile center
+        offy = -1 + y % TILE_SIZE  # cells above/below tile center
+        endpoint_moved = False
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+            if (board[y + dy][x + dx] != pipes.CELL_PIPE_WATER 
+                and (board[y + dy][x + dx] != pipes.CELL_EMPTY 
+                or (dx, dy) == (offx, offy))):
                 new_flow_endpoints.append((x + dx, y + dy))
-                moved_endpoint = True
-        if not moved_endpoint: # Add original endpoint if it did not change
-            new_flow_endpoints.append((x, y))
+                endpoint_moved = True
+        #if not endpoint_moved: # add original endpoint if it did not move
+            #new_flow_endpoints.append((x, y))
+    log.log("new flow: %s" % str(new_flow_endpoints))
     return new_flow_endpoints
 
 def game_is_lost(board, flow_endpoints):
     for x, y in flow_endpoints:
-        if board[y][x] == pipes.CELL_EMPTY:
-            return True
+        if board[y][x] == pipes.CELL_EMPTY: return True
     return False
 
 def game_is_won(board, flow_endpoints, finish_x, finish_y):
-    # TODO: check whole board
-    if board[finish_y][finish_x] == pipes.CELL_PIPE_WATER:
-        return True
-    return False
+    return len(flow_endpoints) == 0
 
 def print_board(win, board, pipe, pipe_x, pipe_y, pipe_r):
     for y in range(0, len(board)):
@@ -78,6 +69,10 @@ def init_colors():
 
 def play():
     init_colors()
+
+    # Load config
+    config = {}
+    exec(open("settings.py").read(), config)
 
     board, start_x, start_y, finish_x, finish_y = levelio.load_board(1)
     board_width = len(board[0])  # assume board is rectangular
@@ -114,23 +109,22 @@ def play():
             number = int(chr(ch)) - 1  # key n should select pipe at index n - 1
             pipe = pipes.PIPES[number]
             r = 0  # reset rotation
-        elif ch == curses.KEY_UP:
+        elif ch in config["move_up"]:
             y = max(0, y - TILE_SIZE)
-        elif ch == curses.KEY_RIGHT:
+        elif ch in config["move_right"]:
             x = min(board_width - TILE_SIZE, x + TILE_SIZE)
-        elif ch == curses.KEY_DOWN:
+        elif ch in config["move_down"]:
             y = min(board_height - TILE_SIZE, y + TILE_SIZE)
-        elif ch == curses.KEY_LEFT:
+        elif ch in config["move_left"]:
             x = max(0, x - TILE_SIZE)
-        elif ch == ord("r") and pipe:
+        elif ch in config["rotate"] and pipe:
             r = (r + 1) % len(pipe)
-        elif ch == ord(" "):
+        elif ch in config["place_pipe"]:
             place_pipe(pipe, x, y, r, board)
-        elif ch == ord("f"):
-            flow_speed /= 2  # double flow speed
+        elif ch in config["increase_flow_speed"]:
+            flow_speed /= 4
+        elif ch in config["increase_flow_speed_more"]:
+            flow_speed /= 10
         elif ch == ord("q"):
             on_game_end(board_win, False)
             return
-
-if __name__ == "__main__":
-    exit()

@@ -4,15 +4,15 @@ import log
 
 def get_menu_selection(win, menu_title, menu):
     win.border()
+    menu_titled = [menu_title, "-" * len(menu_title)] + menu
     # Center menu vertically in window
     win_height, win_width = win.getmaxyx()
-    cursor_y = int(win_height / 2) - int(len(menu) / 2)
+    cursor_y = int(win_height / 2) - int(len(menu_titled) / 2)
 
-    menu_with_title = [menu_title, "-" * len(menu_title)] + menu
     selection = 0
     while True:
         # Display menu
-        for i, menuitem in enumerate(menu_with_title, start=-2):
+        for i, menuitem in enumerate(menu_titled, start=-2):
             # Center menu horizontally in window
             cursor_x = int(win_width / 2) - int(len(menuitem) / 2)
             attrs = curses.A_REVERSE if i == selection else curses.A_NORMAL
@@ -31,7 +31,7 @@ def get_menu_selection(win, menu_title, menu):
 
 def main_menu(win):
     menu_title = "Main menu"
-    menu = ["Play game", "Create level", "Settings", "Exit"]
+    menu = ["Play game", "Create level", "Controls", "Exit"]
     while True:
         selection = get_menu_selection(win, menu_title, menu)
         if selection == 0:
@@ -49,8 +49,8 @@ def post_game_menu(win, game_won):
     selection = get_menu_selection(win, menu_title, menu)
 
 def settings_menu(win):
-    menu_title = "Settings"
-    menu = ["A", "B", "Back"]
+    menu_title = "Controls"
+    menu = ["Move up", "Move right", "Move down", "Move left", "Back"]
     while True:
         selection = get_menu_selection(win, menu_title, menu)
         if selection == 0:
