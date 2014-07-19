@@ -3,6 +3,7 @@ import game
 import log
 
 def get_menu_selection(win, menu_title, menu):
+    win.border()
     # Center menu vertically in window
     win_height, win_width = win.getmaxyx()
     cursor_y = int(win_height / 2) - int(len(menu) / 2)
@@ -23,7 +24,7 @@ def get_menu_selection(win, menu_title, menu):
             selection = (selection - 1) % len(menu)
         elif ch == curses.KEY_DOWN: # move selection down
             selection = (selection + 1) % len(menu)
-        elif ch == ord("\n"): # enter
+        elif ch in (ord("\n"), ord(" ")): # enter
             win.erase()
             win.refresh()
             return selection
@@ -42,6 +43,11 @@ def main_menu(win):
         elif selection == 3:
             return
 
+def post_game_menu(win, game_won):
+    menu_title = "Game won" if game_won else "Game lost"
+    menu = ["OK"]
+    selection = get_menu_selection(win, menu_title, menu)
+
 def settings_menu(win):
     menu_title = "Settings"
     menu = ["A", "B", "Back"]
@@ -53,8 +59,3 @@ def settings_menu(win):
             pass
         elif selection == 2:
             return
-        
-def post_game_menu(win, game_won):
-    menu_title = "Game won" 
-    menu = ["OK"]
-    selection = get_menu_selection(win, menu_title, menu)
