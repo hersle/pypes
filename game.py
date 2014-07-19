@@ -1,20 +1,24 @@
 #!/usr/bin/python
 
 import curses
-import log
+import menu
 from time import time
+import log
 
 BOARD_HEIGHT = 0 # set by load_level()
 BOARD_WIDTH = 0 # set by load_level()
 TILE_SIZE = 3 # every tile is actually a 3x3 grid
 
-CELL_EMPTY = 0          # identifies an empty cell
-CELL_PIPE = 1           # identifies a cell with a pipe
-CELL_PIPE_WATER = 2     # identifies a cell with a pipe with water
-CELL_PIPE_ACTIVE = 3    # identifies a cell with the currently selected pipe
-CELL_START = 4          # identifies a cell where the water flow starts
-CELL_FINISH = 5         # identifies a cell where the water flow should end
+# Cell identifiers
+CELL_EMPTY = 0
+CELL_PIPE = 1
+CELL_PIPE_WATER = 2
+CELL_PIPE_ACTIVE = 3
+CELL_START = 4
+CELL_FINISH = 5
 
+# Lists with (x, y) coordinates for each pipe's rotated variations in a 3x3 grid
+# All coordinates are relative to grid's top-left corner
 PIPE_STRAIGHT = (
     ((0, 1), (1, 1), (2, 1)),
     ((1, 0), (1, 1), (1, 2))
@@ -43,34 +47,55 @@ PIPE_CLOSED = (
 PIPES = (PIPE_STRAIGHT, PIPE_TURN, PIPE_T, PIPE_X, PIPE_CLOSED)
 
 def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
-    # Only place pipe if the tile is free.
-    # The tile is free if its center cell is empty, 
-    # since all pipes use a tile's center cell.
+    # Add the pipe to the board if this tile is free.
     if board[pipe_y + 1][pipe_x + 1] == CELL_EMPTY:
         for x, y in pipe[pipe_r]:
             board[pipe_y + y][pipe_x + x] = CELL_PIPE
 
 def flow_water(board, flow_endpoints):
-    # New endpoints always one step ahead
-    log.log("flow: %s" % str(flow_endpoints))
+    # TODO: review
     new_flow_endpoints = []
     for x, y in flow_endpoints:
+        if board[y][x] == CELL_EMPTY:
+            log.log("game lost")
+        offx = -1 + x % 3
+        offy = -1 + y % 3
+        log.log("offx=%d, offy=%d" % (offx, offy))
+
+        # Fill cell
         board[y][x] = CELL_PIPE_WATER
-        moved_endpoint = False
+
         # Flow water into any adjacent pipes
+        moved_endpoint = False
         for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)): 
-            if board[y + dy][x + dx] not in (CELL_EMPTY, CELL_PIPE_WATER):
-                #board[y + dy][x + dx] = CELL_PIPE_WATER
+            if (dx, dy) == (offx, offy):
+                log.log("(%d, %d) is in same direction" % (dx + x, dy + y))
+            #if board[y + dy][x + dx] not in (CELL_EMPTY, CELL_PIPE_WATER):
+            if board[y + dy][x + dx] != CELL_PIPE_WATER and (board[y+dy][x+dx] != CELL_EMPTY or (dx, dy) == (offx, offy)):
                 new_flow_endpoints.append((x + dx, y + dy))
                 moved_endpoint = True
         if not moved_endpoint: # Add original endpoint if it did not change
             new_flow_endpoints.append((x, y))
-    log.log("new flow: %s\n" % str(new_flow_endpoints))
     return new_flow_endpoints
+
+def game_is_lost(board, flow_endpoints):
+    # TODO: review
+    for x, y in flow_endpoints:
+        if board[y][x] == CELL_EMPTY: return True
+    return False
+
+def game_is_won(board, flow_endpoints, finish_x, finish_y):
+    # TODO: review
+    if board[finish_y][finish_x] == CELL_PIPE_WATER:
+        return True
+    return False
+    for x, y in flow_endpoints:
+        if board[y][x] == CELL_FINISH: exit()
+    return False
 
 def print_board(win, board, pipe, pipe_x, pipe_y, pipe_r):
     for y in range(0, len(board)):
-        win.move(1 + y, 1) # avoid border
+        win.move(1 + y, 1)  # +1 to compensate for border
         for x in range(0, len(board[y])):
             if pipe and (x - pipe_x, y - pipe_y) in pipe[pipe_r]:
                 win.addstr("  ", curses.color_pair(CELL_PIPE_ACTIVE))
@@ -106,6 +131,9 @@ def load_board(level):
         board.append(row)
     return board, start_x, start_y, finish_x, finish_y
 
+def on_game_end(win):
+    menu.post_game_menu(win, True)
+
 def init_colors():
     curses.init_pair(CELL_PIPE, curses.COLOR_BLACK, curses.COLOR_WHITE)
     curses.init_pair(CELL_PIPE_WATER, curses.COLOR_BLACK, curses.COLOR_BLUE)
@@ -126,7 +154,7 @@ def play():
 
     pipe = None # currently selected pipe
     x, y, r = 0, 0, 0 # position from right, position from left, steps rotated
-    flow_speed = 0.5 # seconds before flow flows TODO: make var name more meaningful?
+    flow_speed = 1 # seconds before flow flows TODO: make var name more meaningful?
     start_delay = 2 # seconds before flow starts
     flow_time = time() + start_delay # timestamp at which the flow will flows
     while True:
@@ -135,10 +163,19 @@ def play():
         print_board(board_win, board, pipe, x, y, r)
 
         ch = board_win.getch() # get key press
-        if ch == ord("f"): #ch == -1: # flow
+
+        # Check whether game is won or lost after getch() timeouts
+        if (game_is_lost(board, flow_endpoints) 
+            or game_is_won(board, flow_endpoints, finish_x, finish_y)):
+            board_win.erase()
+            on_game_end(board_win)
+            return
+        # Start checking input
+        elif ch == -1: # flow
+            log.log("%s" % game_is_lost(board, flow_endpoints))
             flow_endpoints = flow_water(board, flow_endpoints)
             flow_time = time() + flow_speed
-        elif ch != -1 and chr(ch).isdigit() and int(chr(ch)) in range(1, len(PIPES) + 1):
+        elif chr(ch).isdigit() and int(chr(ch)) in range(1, len(PIPES) + 1):
             number = int(chr(ch)) - 1  # key "1" should select pipe #0
             pipe = PIPES[number]
             r = 0 # reset rotation
