@@ -3,59 +3,50 @@ import game
 import log
 
 def get_menu_selection(win, menu_title, menu):
+    menu_titled = [menu_title, "-" * len(menu_title)] + menu
     win.border()
-    # Center menu vertically in window
     win_height, win_width = win.getmaxyx()
-    cursor_y = int(win_height / 2) - int(len(menu) / 2)
+    cursor_y = int(win_height / 2) - int(len(menu_titled) / 2)  # center
 
-    menu_with_title = [menu_title, "-" * len(menu_title)] + menu
     selection = 0
     while True:
         # Display menu
-        for i, menuitem in enumerate(menu_with_title, start=-2):
-            # Center menu horizontally in window
-            cursor_x = int(win_width / 2) - int(len(menuitem) / 2)
+        for i, menuitem in enumerate(menu_titled, start=-2):
+            cursor_x = int(win_width / 2) - int(len(menuitem) / 2)  # center
             attrs = curses.A_REVERSE if i == selection else curses.A_NORMAL
             win.addstr(cursor_y + i + 2, cursor_x, menuitem, attrs)
 
         # Get input
         ch = win.getch()
-        if ch == curses.KEY_UP: # move selection up
-            selection = (selection - 1) % len(menu)
-        elif ch == curses.KEY_DOWN: # move selection down
-            selection = (selection + 1) % len(menu)
-        elif ch in (ord("\n"), ord(" ")): # enter
+        if ch == curses.KEY_UP:  # move selection up
+            selection = (selection - 1) % len(menu)  # wrap to bottom
+        elif ch == curses.KEY_DOWN:  # move selection down
+            selection = (selection + 1) % len(menu)  # wrap to top
+        elif ch == ord("\n"):  # enter
             win.erase()
             win.refresh()
             return selection
 
-def main_menu(win):
+def main_menu(screen):
     menu_title = "Main menu"
-    menu = ["Play game", "Create level", "Settings", "Exit"]
+    menu = ["Play game", "Create level", "Controls", "Exit"]
     while True:
-        selection = get_menu_selection(win, menu_title, menu)
+        selection = get_menu_selection(screen, menu_title, menu)
         if selection == 0:
-            game.play()
+            game.play(screen)
         elif selection == 1:
             pass
         elif selection == 2:
-            settings_menu(win)
+            settings_menu(screen)
         elif selection == 3:
             return
 
 def post_game_menu(win, game_won):
     menu_title = "Game won" if game_won else "Game lost"
     menu = ["OK"]
-    selection = get_menu_selection(win, menu_title, menu)
+    get_menu_selection(win, menu_title, menu)
 
 def settings_menu(win):
-    menu_title = "Settings"
-    menu = ["A", "B", "Back"]
-    while True:
-        selection = get_menu_selection(win, menu_title, menu)
-        if selection == 0:
-            pass
-        elif selection == 1:
-            pass
-        elif selection == 2:
-            return
+    menu_title = "Edit settings.py to customize controls"
+    menu = ["OK"]
+    get_menu_selection(win, menu_title, menu)
