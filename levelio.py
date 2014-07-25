@@ -5,13 +5,14 @@ import re
 def load_level(levelnumber):
     # Dictionary for holding level board and information
     level = {}
-    filelines = open("levels/level%d" % levelnumber).read().splitlines()
+    filelines = open("levels/%d" % levelnumber).read().splitlines()
     load_metainfo(level, filter(lambda l: "meta" in l, filelines))
     load_board(level, filter(lambda l: "meta" not in l, filelines))
     return level
 
 def load_board(level, boardlines):
     board = []
+    checkpoints = []
     for y, boardline in enumerate(boardlines):
         row = []
         for x, char in enumerate(boardline): 
@@ -21,15 +22,27 @@ def load_board(level, boardlines):
                 level["start_x"], level["start_y"] = x, y
             elif cell == pipes.CELL_FINISH:
                 level["finish_x"], level["finish_y"] = x, y
+            elif cell == pipes.CELL_CHECKPOINT:
+                checkpoints.append((x, y))
         board.append(row)
     level["board"] = board
+    level["checkpoints"] = checkpoints
 
 def load_metainfo(level, metalines):
     metaregex = re.compile(r"[a-z_]+=[0-9]+")
-    pipes = []
+    pipelist = []
+    log.log("pipes:")
     for metaline in metalines:
-        #pipes.append( {"amount" : 9, "pipe" : } ) 
         s = metaregex.search(metaline).group()
+        pipe, amount = s.split("=")
+        log.log("pipe=%s, amt=%s" % (pipe, amount))
+        pipelist.append({
+            #"id" : get_pipe_int(pipe), 
+            "amount" : int(amount),
+            "pipe" : pipes.PIPES[get_pipe_int(pipe)]
+        })
+    log.log(str(pipelist))
+    level["pipes"] = pipelist
 
 def get_cell_int(string):
     return pipes.CELL_MAP[pipes.CELL_MAP.index(string) + 1]

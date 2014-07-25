@@ -1,6 +1,7 @@
 import curses
 import game
 import log
+import os
 
 def get_menu_selection(win, menu_title, menu):
     menu_titled = [menu_title, "-" * len(menu_title)] + menu
@@ -33,7 +34,8 @@ def main_menu(screen):
     while True:
         selection = get_menu_selection(screen, menu_title, menu)
         if selection == 0:
-            game.play(screen)
+            level_select_menu(screen)
+            #game.play(screen, 2)
         elif selection == 1:
             pass
         elif selection == 2:
@@ -50,3 +52,8 @@ def settings_menu(win):
     menu_title = "Edit settings.py to customize controls"
     menu = ["OK"]
     get_menu_selection(win, menu_title, menu)
+
+def level_select_menu(win):
+    menu_title = "Select level"
+    menu = ["Level " + l for l in os.listdir("levels") if l.isdigit()]
+    game.play(win, get_menu_selection(win, menu_title, menu) + 1)

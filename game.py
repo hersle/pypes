@@ -10,12 +10,12 @@ TILE_SIZE = 3
 
 def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
     # Place pipe if tile's center cell is free
-    if pipe and board[pipe_y + 1][pipe_x + 1] == pipes.CELL_EMPTY:
-        for x, y in pipe[pipe_r]:
+    if board[pipe_y + 1][pipe_x + 1] == pipes.CELL_EMPTY:
+        for x, y in pipe["pipe"][pipe_r]:
             board[pipe_y + y][pipe_x + x] = pipes.CELL_PIPE
+        pipe["amount"] -= 1
 
 def flow_water(board, flow_endpoints):
-    # TODO: write good documentation
     # Wet each endpoint and its adjacent cells that (1) are dry AND (2a) 
     # contains a pipe OR (2b) is in the same direction from the endpoint 
     # as the endpoint is from the tile center.
@@ -27,25 +27,38 @@ def flow_water(board, flow_endpoints):
 
         # Loop through adjacent cells
         for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-            if (board[y + dy][x + dx] != pipes.CELL_PIPE_WATER  # (1)
+            if (y + dy in range(0, len(board)) 
+                and x + dx in range(0, len(board[y + dy]))
+                and board[y + dy][x + dx] != pipes.CELL_PIPE_WATER  # (1)
                 and (board[y + dy][x + dx] != pipes.CELL_EMPTY  # (2a)
                 or (dx, dy) == (offx, offy))):  # (2b)
                 new_flow_endpoints.append((x + dx, y + dy))
     return new_flow_endpoints
+
+def select_pipe(number, pipelist, current_pipe):
+    index = number - 1
+    if index in range(0, len(pipelist)) and pipelist[index]["amount"] > 0:
+        return pipelist[index]
+    else:
+        log.log("Pipe does not exist or is depleted.")
+    return current_pipe
 
 def game_is_lost(board, flow_endpoints):
     for x, y in flow_endpoints:
         if board[y][x] == pipes.CELL_EMPTY: return True
     return False
 
-def game_is_won(flow_endpoints):
+def game_is_won(flow_endpoints, level):
+    for x, y in level["checkpoints"] + [(level["finish_x"], level["finish_y"])]:
+        if level["board"][y][x] != pipes.CELL_PIPE_WATER:
+            return False
     return len(flow_endpoints) == 0
 
 def print_board(win, board, pipe, pipe_x, pipe_y, pipe_r):
     for y in range(0, len(board)):
         win.move(1 + y, 1)  # +1 to compensate for border
         for x in range(0, len(board[y])):
-            if pipe and (x - pipe_x, y - pipe_y) in pipe[pipe_r]:
+            if pipe and (x - pipe_x, y - pipe_y) in pipe["pipe"][pipe_r]:
                 win.addstr("  ", curses.color_pair(pipes.CELL_PIPE_ACTIVE))
             elif board[y][x] == pipes.CELL_EMPTY:
                 win.addstr("  ")
@@ -57,9 +70,9 @@ def print_pipes(win, pipelist):
     for p, pipe in enumerate(pipelist):
         base_x = 1 + p * 12
         win.addstr(1, base_x, "[%d]" % (p + 1))
-        win.addstr(2, base_x, "99x")
+        win.addstr(2, base_x, "%dx" % pipe["amount"])
         base_x += 4
-        for x, y in pipe[0]:
+        for x, y in pipe["pipe"][0]:
             win.addstr(1 + y, base_x + x * 2, "  ", curses.color_pair(pipes.CELL_PIPE))
     win.refresh()
 
@@ -96,9 +109,10 @@ def init_colors():
     curses.init_pair(pipes.CELL_PIPE_WATER, curses.COLOR_BLACK, curses.COLOR_BLUE)
     curses.init_pair(pipes.CELL_PIPE_ACTIVE, curses.COLOR_BLACK, curses.COLOR_MAGENTA)
     curses.init_pair(pipes.CELL_START, curses.COLOR_BLACK, curses.COLOR_GREEN)
+    curses.init_pair(pipes.CELL_CHECKPOINT, curses.COLOR_BLACK, curses.COLOR_YELLOW)
     curses.init_pair(pipes.CELL_FINISH, curses.COLOR_BLACK, curses.COLOR_RED)
 
-def play(screen):
+def play(screen, level_number):
     init_colors()
 
     # Load config/settings
@@ -109,17 +123,18 @@ def play(screen):
         "speed_multiplier" : 1
     }
 
-    level = levelio.load_level(1)
+    level = levelio.load_level(level_number)
     board = level["board"]
     start_x, start_y = level["start_x"], level["start_y"]
     finish_x, finish_y = level["finish_x"], level["finish_y"]
     board_width = len(board[0])  # assume board is rectangular
     board_height = len(board)
     flow_endpoints = [(start_x, start_y)]
+    pipelist = level["pipes"]
 
     pipe_win, board_win, stat_win = init_windows(screen, board_width, board_height)
 
-    pipe = None  # currently selected pipe
+    pipe = pipelist[0]  # currently selected pipe
     x = 0  # blocks from board's left
     y = 0  # blocks from board's top
     r = 0  # steps rotated
@@ -128,21 +143,22 @@ def play(screen):
     flow_time = time() + flow_start_delay # timestamp at which flow flows
     while True:
         game_lost = game_is_lost(board, flow_endpoints)
-        game_won = game_is_won(flow_endpoints)
+        game_won = game_is_won(flow_endpoints, level)
         board_win.timeout(int((flow_time - time()) * 1000))  # s to ms
 
         print_board(board_win, board, pipe, x, y, r)
-        print_pipes(pipe_win, pipes.PIPES)
+        print_pipes(pipe_win, pipelist)
         print_stat(stat_win, stats)
 
         ch = board_win.getch() # get key press
-
-        # Order of operations below matter
+        # Order of operations below does matter
         if ch != -1 and chr(ch).isdigit():  # select new pipe
-            pipe = pipes.PIPES[int(chr(ch)) - 1]
+            pipe = select_pipe(int(chr(ch)), pipelist, pipe)
             r = 0  # reset rotation
         elif ch in config["place_pipe"]:
-            place_pipe(pipe, x, y, r, board)
+            if pipe:
+                place_pipe(pipe, x, y, r, board)
+                if pipe["amount"] == 0: pipe = None  # deselect if pipe depleted
         elif ch in config["move_up"]:
             y = max(0, y - TILE_SIZE)
         elif ch in config["move_right"]:
@@ -152,12 +168,11 @@ def play(screen):
         elif ch in config["move_left"]:
             x = max(0, x - TILE_SIZE)
         elif ch in config["rotate"] and pipe:
-            r = (r + 1) % len(pipe)
+            r = (r + 1) % len(pipe["pipe"])
         elif ch in config["increase_flow_speed"]:
             flow_speed /= 10
             stats["speed_multiplier"] *= 10
-        elif ch == ord("q") or game_lost or game_won:
-            on_game_end(board_win, False)
+        elif ch == ord("q"):
             return
         elif game_lost or game_won:
             on_game_end(board_win, game_won)
