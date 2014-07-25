@@ -109,7 +109,7 @@ def play(screen):
         "speed_multiplier" : 1
     }
 
-    level = levelio.load_board(1)
+    level = levelio.load_level(1)
     board = level["board"]
     start_x, start_y = level["start_x"], level["start_y"]
     finish_x, finish_y = level["finish_x"], level["finish_y"]

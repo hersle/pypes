@@ -34,3 +34,18 @@ PIPE_CLOSED = (
     ((0, 1), (1, 1)),
 )
 PIPES = (PIPE_STRAIGHT, PIPE_TURN, PIPE_T, PIPE_X, PIPE_CLOSED)
+
+# Strings on even indexes (0, 2, 4, etc.)
+# Integers on odd indexes (1, 3, 5, etc.)
+CELL_MAP = (
+    ".", CELL_EMPTY,
+    "p", CELL_PIPE,
+    "s", CELL_START,
+    "f", CELL_FINISH
+)
+PIPE_MAP = (
+    "straight", PIPE_STRAIGHT,
+    "turn", PIPE_TURN,
+    "t", PIPE_T,
+    "x", PIPE_X
+)

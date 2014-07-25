@@ -2,47 +2,37 @@ import pipes
 import log
 import re
 
-def load_board(levelnumber):
+def load_level(levelnumber):
     # Dictionary for holding level board and information
     level = {}
-
-    # Separate into boardlines and metalines
     filelines = open("levels/level%d" % levelnumber).read().splitlines()
-    metalines = []
-    boardlines = []
-    for line in filelines:
-        if "meta" in line: metalines.append(line)
-        else: boardlines.append(line)
-    log.log("boardlines=%s" % boardlines)
-    log.log("metalines=%s" % list(metalines))
-    
-    # Parse board
+    load_metainfo(level, filter(lambda l: "meta" in l, filelines))
+    load_board(level, filter(lambda l: "meta" not in l, filelines))
+    return level
+
+def load_board(level, boardlines):
     board = []
-    start_x, start_y, finish_x, finish_y = None, None, None, None
     for y, boardline in enumerate(boardlines):
         row = []
         for x, char in enumerate(boardline): 
-            if char == ".":
-                row.append(pipes.CELL_EMPTY)
-            elif char == "p":
-                row.append(pipes.CELL_PIPE)
-            elif char == "s":
-                row.append(pipes.CELL_START)
-                level["start_x"] = x
-                level["start_y"] = y
-                #start_x, start_y = x, y
-            elif char == "f":
-                row.append(pipes.CELL_FINISH)
-                level["finish_x"] = x
-                level["finish_y"] = y
-                #finish_x, finish_y = x, y
+            cell = get_cell_int(char)
+            row.append(cell)
+            if cell == pipes.CELL_START:
+                level["start_x"], level["start_y"] = x, y
+            elif cell == pipes.CELL_FINISH:
+                level["finish_x"], level["finish_y"] = x, y
         board.append(row)
     level["board"] = board
 
-    # Parse meta information
+def load_metainfo(level, metalines):
+    metaregex = re.compile(r"[a-z_]+=[0-9]+")
+    pipes = []
     for metaline in metalines:
-        if metaline.startswith("Pipes: "):
-            pass
+        #pipes.append( {"amount" : 9, "pipe" : } ) 
+        s = metaregex.search(metaline).group()
 
-    return level
-    #return board, start_x, start_y, finish_x, finish_y
+def get_cell_int(string):
+    return pipes.CELL_MAP[pipes.CELL_MAP.index(string) + 1]
+
+def get_pipe_int(string):
+    return pipes.PIPE_MAP[pipes.PIPE_MAP.index(string) + 1]
