@@ -1,13 +1,23 @@
 import pipes
+import log
 
 def load_board(level):
-    # Create a new 2D board array by loading a board from a file.
+    filelines = open("levels/level%d" % level).read().splitlines()
+    boardlines = []
+    metalines = []
+    while filelines:
+        if ":" in filelines[0]:
+            metalines.append(filelines.pop(0))
+        else:
+            boardlines.append(filelines.pop(0))
+    log.log("boardlines=%s" % boardlines)
+    log.log("metalines=%s" % metalines)
+    
     board = []
     start_x, start_y, finish_x, finish_y = None, None, None, None
-    lines = open("levels/level%d" % level).read().splitlines()
-    for y, line in enumerate(lines):
+    for y, boardline in enumerate(boardlines):
         row = []
-        for x, char in enumerate(line): 
+        for x, char in enumerate(boardline): 
             if char == ".":
                 row.append(pipes.CELL_EMPTY)
             elif char == "p":
@@ -19,4 +29,9 @@ def load_board(level):
                 row.append(pipes.CELL_FINISH)
                 finish_x, finish_y = x, y
         board.append(row)
+
+    for metaline in metalines:
+        if metaline.startswith("Pipes: "):
+            pass
+
     return board, start_x, start_y, finish_x, finish_y

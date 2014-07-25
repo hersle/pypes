@@ -29,17 +29,17 @@ def get_menu_selection(win, menu_title, menu):
             win.refresh()
             return selection
 
-def main_menu(win):
+def main_menu(screen):
     menu_title = "Main menu"
     menu = ["Play game", "Create level", "Controls", "Exit"]
     while True:
-        selection = get_menu_selection(win, menu_title, menu)
+        selection = get_menu_selection(screen, menu_title, menu)
         if selection == 0:
-            game.play()
+            game.play(screen)
         elif selection == 1:
             pass
         elif selection == 2:
-            settings_menu(win)
+            settings_menu(screen)
         elif selection == 3:
             return
 
