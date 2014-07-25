@@ -10,13 +10,12 @@ import log
 TILE_SIZE = 3
 
 def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
-    # Add the pipe to the board if this tile is free.
+    # Place the pipe if the tile's center cell is free.
     if board[pipe_y + 1][pipe_x + 1] == pipes.CELL_EMPTY:
         for x, y in pipe[pipe_r]:
             board[pipe_y + y][pipe_x + x] = pipes.CELL_PIPE
 
 def flow_water(board, flow_endpoints):
-    # TODO: review
     new_flow_endpoints = []
     for x, y in flow_endpoints:
         if board[y][x] == pipes.CELL_EMPTY:
