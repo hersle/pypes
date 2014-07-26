@@ -1,15 +1,14 @@
 import curses
 import game
-import log
 import os
 
-def get_menu_selection(win, menu_title, menu):
-    menu_titled = [menu_title, "-" * len(menu_title)] + menu
+def get_menu_selection(win, menu_title, menu, selection=0):
     win.border()
     win_height, win_width = win.getmaxyx()
+    menu_max_width = max(len(menuitem) for menuitem in menu + [menu_title])
+    menu_titled = [menu_title, "-" * menu_max_width] + menu
     cursor_y = int(win_height / 2) - int(len(menu_titled) / 2)  # center
 
-    selection = 0
     while True:
         # Display menu
         for i, menuitem in enumerate(menu_titled, start=-2):
@@ -29,23 +28,20 @@ def get_menu_selection(win, menu_title, menu):
             return selection
 
 def main_menu(screen):
-    menu_title = "Main menu"
-    menu = ["Play game", "Create level", "Controls", "Exit"]
+    menu_title = "Pypes"
+    menu = ["Play game", "Create level - TODO", "Controls", "Exit"]
     while True:
         selection = get_menu_selection(screen, menu_title, menu)
         if selection == 0:
-            level_select_menu(screen)
-            #game.play(screen, 2)
-        elif selection == 1:
-            pass
+            select_level(screen)
         elif selection == 2:
             settings_menu(screen)
         elif selection == 3:
-            return
+            break
 
-def post_game_menu(win, game_won):
-    menu_title = "Game won" if game_won else "Game lost"
-    menu = ["OK"]
+def post_game_menu(win, game_won, level_number):
+    menu_title = "Game won" if game_won else "Game over"
+    menu = ["Main menu"]
     get_menu_selection(win, menu_title, menu)
 
 def settings_menu(win):
@@ -53,7 +49,7 @@ def settings_menu(win):
     menu = ["OK"]
     get_menu_selection(win, menu_title, menu)
 
-def level_select_menu(win):
+def select_level(win):
     menu_title = "Select level"
     menu = ["Level " + l for l in os.listdir("levels") if l.isdigit()]
     game.play(win, get_menu_selection(win, menu_title, menu) + 1)
