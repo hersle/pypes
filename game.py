@@ -9,49 +9,35 @@ import log
 TILE_SIZE = 3
 
 def start_flow(level):
-    # Wet each starting point and add it to the flow
     for start_x, start_y in level["starts"]:
         level["board"][start_y][start_x] = pipes.CELL_PIPE_WATER
         level["flow"].append((start_x, start_y))
     level["flow_started"] = True
 
 def flow_water(level):
-    # If flow has not started, start it instead
     if not level["flow_started"]:
         start_flow(level)
-        return
-
-    board = level["board"]
-    new_flow = []
-
-    # Loop through every flow endpoint
-    for x, y in level["flow"]:
-        log.log("+ endpoint (%d, %d):" % (x, y))  # DEBUG
-        offx = -1 + x % TILE_SIZE  # cells left/right of tile center
-        offy = -1 + y % TILE_SIZE  # cells above/below tile center
-
-        # Check cells   above    right   below   left
-        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-            log.log("  - cell %s:" % get_dir_name((dx, dy)))  # DEBUG
-            if (y + dy not in range(0, len(level["board"]))
-                or x + dx not in range(0, len(level["board"][y + dy]))):
-                log.log("    - out of bounds; game over")  # DEBUG
-                level["lost"] = True
+    else:  # expand flow
+        new_flow = []
+        for x, y in level["flow"]:
+            if (y in (0, len(level["board"]) - 1)
+                or x in (0, len(level["board"][y]) - 1)):
+                level["lost"] = True # game lost if flow is at board edge
                 return
-            cell = board[y + dy][x + dx]
-            if cell != pipes.CELL_PIPE_WATER:
-                if cell != pipes.CELL_EMPTY:
-                    log.log("    - pipe dry; watering")  # DEBUG
-                    board[y + dy][x + dx] = pipes.CELL_PIPE_WATER
-                    new_flow.append((x + dx, y + dy))
-                elif (dx, dy) == (offx, offy) and cell == pipes.CELL_EMPTY:
-                    #log.log("    - forcing water")
-                    #if cell == pipes.CELL_EMPTY:  # TODO: unnecessary?
-                    log.log("    - forcing water; cell empty; game over")  # DEBUG
-                    level["lost"] = True
-                    return
-    level["won"] = game_is_won(level, new_flow)
-    level["flow"] = new_flow
+            offx = -1 + x % TILE_SIZE  # cells left/right of tile center
+            offy = -1 + y % TILE_SIZE  # cells above/below tile center
+            # Check cells   above    right   below   left
+            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                cell = level["board"][y + dy][x + dx]
+                if cell != pipes.CELL_PIPE_WATER:  # do not wet a pipe twice
+                    if cell != pipes.CELL_EMPTY:
+                        level["board"][y + dy][x + dx] = pipes.CELL_PIPE_WATER
+                        new_flow.append((x + dx, y + dy))
+                    elif (dx, dy) == (offx, offy) and cell == pipes.CELL_EMPTY:
+                        level["lost"] = True
+                        return
+        level["won"] = game_is_won(level, new_flow)
+        level["flow"] = new_flow
 
 def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
     # Place pipe if tile's center cell is free
@@ -60,15 +46,9 @@ def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
             board[pipe_y + y][pipe_x + x] = pipes.CELL_PIPE
         pipe["qty"] -= 1
 
-
 def game_is_won(level, flow_endpoints):
+    # TODO: fix game is won
     return set(level["finishes"]) == set(flow_endpoints)
-
-def get_dir_name(delta):  # DEBUG
-    if delta == (0, -1): return "above"
-    if delta == (1, 0): return "right"
-    if delta == (0, 1): return "below"
-    if delta == (-1, 0): return "left"
 
 def select_pipe(number, pipelist, current_pipe):
     index = number - 1
@@ -100,8 +80,7 @@ def print_pipes(win, pipelist):
             win.addstr(1 + y, base_x + x * 2, string, curses.color_pair(pipes.CELL_PIPE))
     win.refresh()
 
-def print_misc(win, stats):
-    win.addstr(1, 1, "Speed: %dx" % stats["speed_multiplier"])
+def print_misc(win):
     win.refresh()
 
 def on_game_end(win, game_won, level_number):
@@ -129,6 +108,7 @@ def init_windows(screen, board_width, board_height):
     width = screen_width - left  # cover rest of screen width
     misc_win = curses.newwin(height, width, top, left)
     misc_win.border()
+    misc_win.refresh()
 
     return pipe_win, board_win, misc_win
 
@@ -147,8 +127,6 @@ def play(screen, level_number):
     config = {}
     exec(open("settings.py").read(), config)
 
-    stats = {"speed_multiplier" : 1}
-
     level = levelio.load_level(level_number)
     board_width = len(level["board"][0])  # assume board is rectangular
     board_height = len(level["board"])
@@ -162,26 +140,21 @@ def play(screen, level_number):
     flow_speed = 0.5  # seconds till flow flows
     flow_start_delay = 2  # seconds till flow starts
     flow_time = time() + flow_start_delay  # timestamp at which flow flows
-    flow_started = False
     while True:
-        #game_lost = game_is_lost(level, flow_endpoints)
-        #game_won = game_is_won(flow_endpoints, level)
-        game_lost, game_won = False, False
         board_win.timeout(int((flow_time - time()) * 1000))  # s to ms
 
         print_board(board_win, level["board"], pipe, x, y, r)
         print_pipes(pipe_win, level["pipes"])
-        print_misc(misc_win, stats)
+        #print_misc(misc_win)
 
         ch = board_win.getch() # get key press
         # Order of operations below does matter
         if ch != -1 and chr(ch).isdigit():  # select new pipe
             pipe = select_pipe(int(chr(ch)), level["pipes"], pipe)
             r = 0  # reset rotation
-        elif ch in config["place_pipe"]:
-            if pipe:
-                place_pipe(pipe, x, y, r, level["board"])
-                if pipe["qty"] == 0: pipe = None  # deselect if empty
+        elif ch in config["place_pipe"] and pipe:
+            place_pipe(pipe, x, y, r, level["board"])
+            if pipe["qty"] == 0: pipe = None  # deselect if empty
         elif ch in config["move_up"]:
             y = max(0, y - TILE_SIZE)
         elif ch in config["move_right"]:
@@ -192,9 +165,11 @@ def play(screen, level_number):
             x = max(0, x - TILE_SIZE)
         elif ch in config["rotate"] and pipe:
             r = (r + 1) % len(pipe["coords"])
+        elif ch in config["increase_flow_speed"]:
+            flow_speed /= 10
         elif ch == ord("q"):
             return
-        elif ch == ord("f"):# or ch == -1:  # keypress timeout
+        elif ch == -1:  # keypress timeout
             flow_water(level)
             flow_time = time() + flow_speed  # update flow time
         if level["won"] or level["lost"]:

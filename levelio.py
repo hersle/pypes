@@ -30,6 +30,7 @@ def load_board(level, boardlines):
 
 def load_pipes(level, pipelines):
     level["pipes"] = pipes.PIPES
+    # TODO: set pipe quantities not specified in file to 0
     for line in pipelines:
         char, qty = line.split("=")
         pipe = next(p for p in level["pipes"] if p["char"] == char)
