@@ -9,7 +9,10 @@ def load_level(levelnumber):
     return level
 
 def load_board(level, boardlines):
+    level["flow_started"] = False
+    level["flow"] = []
     level["board"] = []
+    level["starts"] = []
     level["checkpoints"] = []
     level["finishes"] = []
     for y, boardline in enumerate(boardlines):
@@ -18,7 +21,7 @@ def load_board(level, boardlines):
             cell = get_cell_int(char)
             row.append(cell)
             if cell == pipes.CELL_START:
-                level["start"] = (x, y)  # TODO: multiple starting points
+                level["starts"].append((x, y))
             elif cell == pipes.CELL_FINISH:
                 level["finishes"].append((x, y))
             elif cell == pipes.CELL_CHECKPOINT:

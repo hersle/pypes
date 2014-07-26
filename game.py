@@ -9,41 +9,50 @@ import log
 TILE_SIZE = 3
 
 def start_flow(level):
-    start_x, start_y = level["start"]
-    level["board"][start_y][start_x] = pipes.CELL_PIPE_WATER
-    return [(start_x, start_y)]
+    # Wet each starting point and add it to the flow
+    for start_x, start_y in level["starts"]:
+        level["board"][start_y][start_x] = pipes.CELL_PIPE_WATER
+        level["flow"].append((start_x, start_y))
+    level["flow_started"] = True
 
-def flow_water(level, flow_endpoints):
+def flow_water(level):
+    # If flow has not started, start it instead
+    if not level["flow_started"]:
+        start_flow(level)
+        return
+
     board = level["board"]
-    new_flow_endpoints = []
+    new_flow = []
 
-    # Loop through every endpoint
-    for x, y in flow_endpoints:
-        log.log("+ endpoint (%d, %d):" % (x, y))
+    # Loop through every flow endpoint
+    for x, y in level["flow"]:
+        log.log("+ endpoint (%d, %d):" % (x, y))  # DEBUG
         offx = -1 + x % TILE_SIZE  # cells left/right of tile center
         offy = -1 + y % TILE_SIZE  # cells above/below tile center
 
         # Check cells   above    right   below   left
         for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-            log.log("  - cell %s:" % get_dir_name((dx, dy)))
-            if y + dy not in range(0, len(board)) or x + dx not in range(0, len(board[y + dy])):
-                log.log("    - out of bounds; game over")
+            log.log("  - cell %s:" % get_dir_name((dx, dy)))  # DEBUG
+            if (y + dy not in range(0, len(level["board"]))
+                or x + dx not in range(0, len(level["board"][y + dy]))):
+                log.log("    - out of bounds; game over")  # DEBUG
                 level["lost"] = True
                 return
             cell = board[y + dy][x + dx]
             if cell != pipes.CELL_PIPE_WATER:
                 if cell != pipes.CELL_EMPTY:
-                    log.log("    - pipe dry; watering")
+                    log.log("    - pipe dry; watering")  # DEBUG
                     board[y + dy][x + dx] = pipes.CELL_PIPE_WATER
-                    new_flow_endpoints.append((x + dx, y + dy))
-                elif (dx, dy) == (offx, offy):
-                    log.log("    - forcing water")
-                    if cell == pipes.CELL_EMPTY:
-                        log.log("      - cell was empty; game over")
-                        level["lost"] = True
-                        return
-    level["won"] = game_is_won(level, new_flow_endpoints)
-    return new_flow_endpoints
+                    new_flow.append((x + dx, y + dy))
+                elif (dx, dy) == (offx, offy) and cell == pipes.CELL_EMPTY:
+                    #log.log("    - forcing water")
+                    #if cell == pipes.CELL_EMPTY:  # TODO: unnecessary?
+                    log.log("    - forcing water; cell empty; game over")  # DEBUG
+                    level["lost"] = True
+                    return
+    level["won"] = game_is_won(level, new_flow)
+    level["flow"] = new_flow
+
 def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
     # Place pipe if tile's center cell is free
     if board[pipe_y + 1][pipe_x + 1] == pipes.CELL_EMPTY:
@@ -72,7 +81,7 @@ def print_board(win, board, pipe, pipe_x, pipe_y, pipe_r):
         win.move(1 + y, 1)  # +1 to compensate for window border
         for x in range(0, len(board[y])):
             if pipe and (x - pipe_x, y - pipe_y) in pipe["coords"][pipe_r]:
-                win.addstr("░░", curses.color_pair(pipes.CELL_PIPE_ACTIVE))
+                win.addstr("██", curses.color_pair(pipes.CELL_PIPE_ACTIVE))
             elif board[y][x] == pipes.CELL_EMPTY:
                 win.addstr("  ")
             else:
@@ -143,8 +152,6 @@ def play(screen, level_number):
     level = levelio.load_level(level_number)
     board_width = len(level["board"][0])  # assume board is rectangular
     board_height = len(level["board"])
-    flow_endpoints = [level["start"]]
-    #pipelist = level["pipes"]
 
     pipe_win, board_win, misc_win = init_windows(screen, board_width, board_height)
 
@@ -188,12 +195,8 @@ def play(screen, level_number):
         elif ch == ord("q"):
             return
         elif ch == ord("f"):# or ch == -1:  # keypress timeout
-            if not flow_started:
-                flow_endpoints = start_flow(level)
-                flow_started = True
-            else:
-                flow_endpoints = flow_water(level, flow_endpoints)
+            flow_water(level)
             flow_time = time() + flow_speed  # update flow time
-            if level["won"] or level["lost"]:
-                on_game_end(board_win, level["won"], level_number)
-                return
+        if level["won"] or level["lost"]:
+            on_game_end(board_win, level["won"], level_number)
+            return
