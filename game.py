@@ -11,9 +11,9 @@ TILE_SIZE = 3
 def place_pipe(pipe, pipe_x, pipe_y, pipe_r, board):
     # Place pipe if tile's center cell is free
     if board[pipe_y + 1][pipe_x + 1] == pipes.CELL_EMPTY:
-        for x, y in pipe["pipe"][pipe_r]:
+        for x, y in pipe["coordinates"][pipe_r]:
             board[pipe_y + y][pipe_x + x] = pipes.CELL_PIPE
-        pipe["amount"] -= 1
+        pipe["quantity"] -= 1
 
 def flow_water(board, flow_endpoints):
     # Wet each endpoint and its adjacent cells that (1) are dry AND (2a) 
@@ -37,7 +37,7 @@ def flow_water(board, flow_endpoints):
 
 def select_pipe(number, pipelist, current_pipe):
     index = number - 1
-    if index in range(0, len(pipelist)) and pipelist[index]["amount"] > 0:
+    if index in range(0, len(pipelist)) and pipelist[index]["quantity"] > 0:
         return pipelist[index]
     else:
         log.log("Pipe does not exist or is depleted.")
@@ -58,7 +58,7 @@ def print_board(win, board, pipe, pipe_x, pipe_y, pipe_r):
     for y in range(0, len(board)):
         win.move(1 + y, 1)  # +1 to compensate for border
         for x in range(0, len(board[y])):
-            if pipe and (x - pipe_x, y - pipe_y) in pipe["pipe"][pipe_r]:
+            if pipe and (x - pipe_x, y - pipe_y) in pipe["coordinates"][pipe_r]:
                 win.addstr("  ", curses.color_pair(pipes.CELL_PIPE_ACTIVE))
             elif board[y][x] == pipes.CELL_EMPTY:
                 win.addstr("  ")
@@ -70,9 +70,9 @@ def print_pipes(win, pipelist):
     for p, pipe in enumerate(pipelist):
         base_x = 1 + p * 12
         win.addstr(1, base_x, "[%d]" % (p + 1))
-        win.addstr(2, base_x, "%dx" % pipe["amount"])
+        win.addstr(2, base_x, "%dx" % pipe["quantity"])
         base_x += 4
-        for x, y in pipe["pipe"][0]:
+        for x, y in pipe["coordinates"][0]:
             win.addstr(1 + y, base_x + x * 2, "  ", curses.color_pair(pipes.CELL_PIPE))
     win.refresh()
 
@@ -158,7 +158,7 @@ def play(screen, level_number):
         elif ch in config["place_pipe"]:
             if pipe:
                 place_pipe(pipe, x, y, r, board)
-                if pipe["amount"] == 0: pipe = None  # deselect if pipe depleted
+                if pipe["quantity"] == 0: pipe = None  # deselect if empty
         elif ch in config["move_up"]:
             y = max(0, y - TILE_SIZE)
         elif ch in config["move_right"]:
@@ -168,7 +168,7 @@ def play(screen, level_number):
         elif ch in config["move_left"]:
             x = max(0, x - TILE_SIZE)
         elif ch in config["rotate"] and pipe:
-            r = (r + 1) % len(pipe["pipe"])
+            r = (r + 1) % len(pipe["coordinates"])
         elif ch in config["increase_flow_speed"]:
             flow_speed /= 10
             stats["speed_multiplier"] *= 10

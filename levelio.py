@@ -35,11 +35,9 @@ def load_metainfo(level, metalines):
     for metaline in metalines:
         s = metaregex.search(metaline).group()
         pipe, amount = s.split("=")
-        log.log("pipe=%s, amt=%s" % (pipe, amount))
         pipelist.append({
-            #"id" : get_pipe_int(pipe), 
-            "amount" : int(amount),
-            "pipe" : pipes.PIPES[get_pipe_int(pipe)]
+            "quantity" : int(amount),
+            "coordinates" : pipes.PIPES[get_pipe_int(pipe)]
         })
     log.log(str(pipelist))
     level["pipes"] = pipelist
