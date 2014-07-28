@@ -1,7 +1,7 @@
 # Cell identifiers
 CELL_EMPTY = 0
-CELL_PIPE = 1
-CELL_PIPE_WATER = 2
+CELL_PIPE_DRY = 1
+CELL_PIPE_WET = 2
 CELL_PIPE_ACTIVE = 3
 CELL_START = 4
 CELL_CHECKPOINT = 5
@@ -9,7 +9,7 @@ CELL_FINISH = 6
 
 CELL_MAP = (
     ".", CELL_EMPTY,
-    "p", CELL_PIPE,
+    "p", CELL_PIPE_DRY,
     "s", CELL_START,
     "c", CELL_CHECKPOINT,
     "f", CELL_FINISH

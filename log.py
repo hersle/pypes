@@ -1,2 +1,2 @@
-def log(msg):
-    open("log", "a").write(msg + "\n")
+def log(msg, level=0):
+    open("log", "a").write("  " * level + msg + "\n")
