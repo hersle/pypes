@@ -24,7 +24,7 @@ class Pipe:
         self.char = char
         self.coordinates = coordinates
 
-    def place(self, board_x, board_y, r, board):
+    def place(self, board, board_x, board_y, r):
         if board[board_y + 1][board_x + 1] == CELL_EMPTY:
             for x, y in self.coordinates[r]:
                 board[board_y + y][board_x + x] = CELL_PIPE_DRY

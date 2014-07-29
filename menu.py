@@ -2,13 +2,14 @@ import curses
 import game
 import os
 
-def get_menu_selection(win, menu_title, menu, selection=0):
-    win.border()
+def get_menu_selection(win, menu_title, menu):
+    win.erase()
     win_height, win_width = win.getmaxyx()
     menu_max_width = max(len(menuitem) for menuitem in menu + [menu_title])
     menu_titled = [menu_title, "-" * menu_max_width] + menu
     cursor_y = int(win_height / 2) - int(len(menu_titled) / 2)  # center
 
+    selection = 0
     while True:
         # Display menu
         for i, menuitem in enumerate(menu_titled, start=-2):
@@ -23,8 +24,6 @@ def get_menu_selection(win, menu_title, menu, selection=0):
         elif ch == curses.KEY_DOWN:  # move selection down
             selection = (selection + 1) % len(menu)  # wrap to top
         elif ch == ord("\n"):  # enter
-            win.erase()
-            win.refresh()
             return selection
 
 def main_menu(screen):
@@ -52,4 +51,5 @@ def settings_menu(win):
 def select_level(win):
     menu_title = "Select level"
     menu = ["Level " + l for l in os.listdir("levels") if l.isdigit()]
-    game.play(win, get_menu_selection(win, menu_title, menu) + 1)
+    level_number = get_menu_selection(win, menu_title, menu) + 1
+    game.play(win, level_number)
