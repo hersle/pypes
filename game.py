@@ -62,9 +62,9 @@ class Level:
         return None
 
     def select_pipe(self, current_pipe, number):
-        index = number - 1  # pressing 1 should select pipe at index 0, etc
-        if index in range(0, len(self.pipes)):
-            return self.pipes[index]
+        i = number - 1  # pressing 1 should select pipe at index 0, etc
+        if i in range(0, len(self.pipes)) and self.pipes[i].quantity > 0:
+            return self.pipes[i]
         return current_pipe
 
     def advance_flow(self):
