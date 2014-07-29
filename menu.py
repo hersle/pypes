@@ -28,14 +28,12 @@ def get_menu_selection(win, menu_title, menu):
 
 def main_menu(screen):
     menu_title = "Pypes"
-    menu = ["Play game", "Create level - TODO", "Controls", "Exit"]
+    menu = ["Play game", "Exit"]
     while True:
         selection = get_menu_selection(screen, menu_title, menu)
         if selection == 0:
             select_level(screen)
-        elif selection == 2:
-            settings_menu(screen)
-        elif selection == 3:
+        elif selection == 1:
             break
 
 def post_game_menu(win, game_won, level_number):
@@ -43,13 +41,12 @@ def post_game_menu(win, game_won, level_number):
     menu = ["Main menu"]
     get_menu_selection(win, menu_title, menu)
 
-def settings_menu(win):
-    menu_title = "Edit settings.py to customize controls"
-    menu = ["OK"]
-    get_menu_selection(win, menu_title, menu)
-
 def select_level(win):
     menu_title = "Select level"
-    menu = ["Level " + l for l in os.listdir("levels") if l.isdigit()]
-    level_number = get_menu_selection(win, menu_title, menu) + 1
-    game.play(win, level_number)
+    menu = ["Level " + l for l in os.listdir("levels") if l.isdigit()] + ["Back"]
+    selection = get_menu_selection(win, menu_title, menu)
+    if selection == len(menu) - 1:
+        return
+    else:
+        level_number = selection + 1
+        game.play(win, level_number)
