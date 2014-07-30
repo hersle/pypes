@@ -60,8 +60,9 @@ def post_game_menu(win, game_won, level_number):
             "██    ██  ██    ██  ██ ██ ██  ██          ██    ██  ██    ██  ██        ██  ██  ",
             "████████  ██    ██  ██ ██ ██  ████████    ████████    ████    ████████  ██    ██",
         ]
-    menu = ["Main menu"]
-    get_menu_selection(win, title_lines, menu)
+    menu = ["Select level", "Main menu"]
+    if get_menu_selection(win, title_lines, menu) == 0:
+        select_level(win)
 
 def select_level(win):
     title_lines = [
@@ -71,7 +72,7 @@ def select_level(win):
         "      ██  ██        ██        ██        ██           ██       ██        ██       ██    ██  ██        ██      ",
         "████████  ████████  ████████  ████████  ████████     ██       ████████  ████████   ████    ████████  ████████"
     ]
-    menu = ["Level " + l for l in os.listdir("levels") if l.isdigit()] + ["Back"]
+    menu = ["Level " + l for l in sorted(os.listdir("levels")) if l.isdigit()] + ["Main menu"]
     selection = get_menu_selection(win, title_lines, menu)
     if selection == len(menu) - 1:
         return

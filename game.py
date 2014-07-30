@@ -20,8 +20,9 @@ class Level:
         lines_board = [line for line in lines if "=" not in line]
 
         self.load_pipes(lines_pipes)
-        starts, checkpoints, finishes = self.load_board(lines_board)
-        self.flow = Flow(starts, checkpoints, finishes)
+        self.load_board(lines_board)
+        self.validate()
+        self.flow = Flow(self.starts, self.checkpoints, self.finishes)
 
     def load_pipes(self, lines_pipes):
         pipe_quantities = dict(line.split("=") for line in lines_pipes)
@@ -32,9 +33,9 @@ class Level:
 
     def load_board(self, lines_board):
         self.board = []
-        starts = []
-        checkpoints = []
-        finishes = []
+        self.starts = []
+        self.checkpoints = []
+        self.finishes = []
 
         for y, line in enumerate(lines_board):
             row = []
@@ -42,16 +43,21 @@ class Level:
                 cell = pipes.CELL_MAP[char]
                 row.append(cell)
                 if cell == pipes.CELL_START:
-                    starts.append((x, y))
+                    self.starts.append((x, y))
                 elif cell == pipes.CELL_CHECKPOINT:
-                    checkpoints.append((x, y))
+                    self.checkpoints.append((x, y))
                 elif cell == pipes.CELL_FINISH:
-                    finishes.append((x, y))
+                    self.finishes.append((x, y))
             self.board.append(row)
 
         self.height = len(self.board)
         self.width = max(len(row) for row in self.board)
-        return starts, checkpoints, finishes
+
+    def validate(self):
+        assert self.width >= 9 and self.width % 3 == 0
+        assert self.height >= 9 and self.height % 3 == 0
+        assert len(self.starts) >= 1
+        assert len(self.finishes) >= 1
 
     def select_pipe_auto(self, current_pipe):
         # Return first pipe whose quantity > 0
